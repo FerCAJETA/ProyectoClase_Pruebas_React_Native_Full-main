@@ -1,7 +1,8 @@
 import React, { useState, useContext } from "react";
-import { Alert, View } from "react-native";
-import { TextInput, Button, Text } from "react-native-paper";
+import { Alert, View, StyleSheet } from "react-native";
+import { TextInput, Button, Text, Card } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { estadoLoginGlobal } from "../../context/contexData";
 
 export default function ScreenCrearCuenta() {
@@ -12,7 +13,6 @@ export default function ScreenCrearCuenta() {
   const rutasSignup = useNavigation();
 
   const api = process.env.EXPO_PUBLIC_API_URL;
-
   const { login } = useContext(estadoLoginGlobal);
 
   const handleCrearCuenta = async () => {
@@ -20,6 +20,7 @@ export default function ScreenCrearCuenta() {
       Alert.alert("Atención", "Todos los campos son obligatorios");
       return;
     }
+    
     const myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
 
@@ -48,8 +49,6 @@ export default function ScreenCrearCuenta() {
       } else {
         Alert.alert("Mensaje", result.body?.mensaje || "Ocurrió un error.");
       }
-
-      console.log("Resultado:", result);
     } catch (error) {
       console.error("Error en crear cuenta:", error);
       Alert.alert("Error", "No se pudo conectar con el servidor.");
@@ -57,45 +56,130 @@ export default function ScreenCrearCuenta() {
   };
 
   return (
-    <View style={{ padding: 10, flex: 1, justifyContent: "center" }}>
-      <Text style={{ textAlign: "center" }} variant="displayLarge">
-        Crear Cuenta
-      </Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <MaterialCommunityIcons name="pokeball" size={60} color="#6366F1" />
+        <Text style={styles.title}>Pokédex</Text>
+        <Text style={styles.subtitle}>Crea tu cuenta para comenzar</Text>
+      </View>
 
-      <TextInput
-        style={{ marginTop: 10 }}
-        label="Nombre"
-        value={nombre}
-        onChangeText={setNombre}
-        left={<TextInput.Icon icon="account" />}
-      />
+      <Card style={styles.card}>
+        <Card.Content style={styles.cardContent}>
+          <Text style={styles.cardTitle}>Crear Cuenta</Text>
 
-      <TextInput
-        style={{ marginTop: 10 }}
-        label="Email"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-        left={<TextInput.Icon icon="email" />}
-      />
+          <TextInput
+            style={styles.input}
+            label="Nombre"
+            value={nombre}
+            onChangeText={setNombre}
+            left={<TextInput.Icon icon="account" color="#6366F1" />}
+            mode="outlined"
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#6366F1"
+          />
 
-      <TextInput
-        style={{ marginTop: 10 }}
-        label="Password"
-        secureTextEntry={verpw}
-        value={password}
-        onChangeText={setPassword}
-        left={<TextInput.Icon icon="lock" />}
-        right={<TextInput.Icon icon="eye" onPress={() => setVerpw(!verpw)} />}
-      />
+          <TextInput
+            style={styles.input}
+            label="Email"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+            left={<TextInput.Icon icon="email" color="#6366F1" />}
+            mode="outlined"
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#6366F1"
+          />
 
-      <Button mode="contained" icon="account-plus" style={{ marginTop: 20, padding: 10 }} onPress={handleCrearCuenta}>
-        Crear cuenta
-      </Button>
+          <TextInput
+            style={styles.input}
+            label="Contraseña"
+            secureTextEntry={verpw}
+            value={password}
+            onChangeText={setPassword}
+            left={<TextInput.Icon icon="lock" color="#6366F1" />}
+            right={<TextInput.Icon icon="eye" onPress={() => setVerpw(!verpw)} color="#6366F1" />}
+            mode="outlined"
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#6366F1"
+          />
 
-      <Button mode="text" style={{ marginTop: 10 }} onPress={() => rutasSignup.push("login")}>
-        ¿Ya tienes cuenta? Inicia sesión
-      </Button>
+          <Button 
+            mode="contained" 
+            icon="account-plus" 
+            style={styles.createButton}
+            onPress={handleCrearCuenta}
+            buttonColor="#6366F1"
+            textColor="#FFFFFF"
+          >
+            Crear cuenta
+          </Button>
+
+          <Button 
+            mode="text" 
+            style={styles.loginLink}
+            onPress={() => rutasSignup.push("login")}
+            textColor="#6366F1"
+          >
+            ¿Ya tienes cuenta? Inicia sesión
+          </Button>
+        </Card.Content>
+      </Card>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    padding: 20,
+    justifyContent: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginTop: 16,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#64748B',
+    marginTop: 8,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  cardContent: {
+    padding: 24,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1E293B',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  input: {
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  createButton: {
+    marginTop: 8,
+    marginBottom: 16,
+    borderRadius: 12,
+    paddingVertical: 8,
+  },
+  loginLink: {
+    marginTop: 8,
+  },
+});

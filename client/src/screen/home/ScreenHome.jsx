@@ -1,50 +1,168 @@
-import { StyleSheet, View } from 'react-native';
-import React from 'react';
-import { Card, Button, Text } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, FlatList, ActivityIndicator, Alert, ScrollView, Dimensions } from 'react-native';
+import { Text, Chip } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import PokemonCard from '../../components/PokemonCard';
+import SearchBar from '../../components/SearchBar';
+import axios from 'axios';
+
+const { width } = Dimensions.get('window');
 
 export default function ScreenHome() {
   const navigation = useNavigation();
+  const [pokemons, setPokemons] = useState([]);
+  const [filteredPokemons, setFilteredPokemons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [types, setTypes] = useState([]);
+  const [selectedType, setSelectedType] = useState('all');
+
+  const fetchTypes = async () => {
+    try {
+      const response = await axios.get('https://pokeapi.co/api/v2/type');
+      const validTypes = response.data.results.filter(t => 
+        t.name !== 'unknown' && t.name !== 'shadow' && t.name !== 'stellar'
+      );
+      setTypes(validTypes);
+    } catch (error) {
+      setTypes([]);
+    }
+  };
+
+  const fetchPokemons = async (limit = 20) => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`);
+      const pokemonDetails = await Promise.all(
+        response.data.results.map(async (pokemon) => {
+          const detailResponse = await axios.get(pokemon.url);
+          return detailResponse.data;
+        })
+      );
+      
+      if (offset === 0) {
+        setPokemons(pokemonDetails);
+        setFilteredPokemons(pokemonDetails);
+      } else {
+        setPokemons(prev => [...prev, ...pokemonDetails]);
+        setFilteredPokemons(prev => [...prev, ...pokemonDetails]);
+      }
+      setHasMore(response.data.next !== null);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar los Pokémon');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTypes();
+    fetchPokemons();
+  }, []);
+
+  useEffect(() => {
+    let filtered = pokemons;
+    if (selectedType !== 'all') {
+      filtered = filtered.filter(pokemon => pokemon.types.some(t => t.type.name === selectedType));
+    }
+    if (searchQuery.trim() !== '') {
+      filtered = filtered.filter(pokemon =>
+        pokemon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        pokemon.id.toString().includes(searchQuery)
+      );
+    }
+    setFilteredPokemons(filtered);
+  }, [searchQuery, pokemons, selectedType]);
+
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      setOffset(prev => prev + 20);
+      fetchPokemons(20);
+    }
+  };
+
+  const handlePokemonPress = (pokemon) => {
+    navigation.navigate('DetallesPokemon', { pokemon });
+  };
+
+  const renderPokemon = ({ item }) => (
+    <PokemonCard pokemon={item} onPress={handlePokemonPress} />
+  );
+
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={styles.loadingFooter}>
+        <ActivityIndicator size="large" color="#6366F1" />
+      </View>
+    );
+  };
+
+  const renderTypeFilters = () => (
+    <View style={styles.filtersContainer}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={styles.typeScroll}
+        contentContainerStyle={styles.typeScrollContent}
+      >
+        <Chip
+          selected={selectedType === 'all'}
+          onPress={() => setSelectedType('all')}
+          style={[styles.typeChip, selectedType === 'all' && styles.typeChipSelected]}
+          textStyle={[styles.typeChipText, selectedType === 'all' && styles.typeChipTextSelected]}
+        >
+          Todos
+        </Chip>
+        {types.map((type) => (
+          <Chip
+            key={type.name}
+            selected={selectedType === type.name}
+            onPress={() => setSelectedType(type.name)}
+            style={[styles.typeChip, selectedType === type.name && styles.typeChipSelected]}
+            textStyle={[styles.typeChipText, selectedType === type.name && styles.typeChipTextSelected]}
+          >
+            {type.name.charAt(0).toUpperCase() + type.name.slice(1)}
+          </Chip>
+        ))}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerTitle}>Centro de Control Doméstico</Text>
-      <View style={styles.headerDecoration} />
-
-      <View style={styles.row}>
-        <Card style={[styles.card, styles.cardLuces]}>
-          <Card.Content style={styles.cardContent}>
-            <MaterialCommunityIcons name="ceiling-light-multiple" size={40} color="#FFD166" />
-            <Text style={styles.cardTitle}>Iluminación</Text>
-            <Text style={styles.cardDescription}>Administra la luz ambiente</Text>
-            <Button
-              mode="contained"
-              onPress={() => navigation.push('lucescasas')}
-              style={[styles.button, styles.buttonLuces]}
-              labelStyle={styles.buttonLabel}
-            >
-              Ingresar
-            </Button>
-          </Card.Content>
-        </Card>
-
-        <Card style={[styles.card, styles.cardPuertas]}>
-          <Card.Content style={styles.cardContent}>
-            <MaterialCommunityIcons name="door" size={40} color="#118AB2" />
-            <Text style={styles.cardTitle}>Accesos</Text>
-            <Text style={styles.cardDescription}>Supervisa tus entradas</Text>
-            <Button
-              mode="contained"
-              onPress={() => navigation.push('puertacasa')}
-              style={[styles.button, styles.buttonPuertas]}
-              labelStyle={styles.buttonLabel}
-            >
-              Ingresar
-            </Button>
-          </Card.Content>
-        </Card>
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Pokédex</Text>
+          <MaterialCommunityIcons name="pokeball" size={32} color="#6366F1" />
+        </View>
+        <View style={styles.headerDecoration} />
       </View>
+      
+      <SearchBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Buscar Pokémon..."
+      />
+      
+      {renderTypeFilters()}
+      
+      <FlatList
+        data={filteredPokemons}
+        renderItem={renderPokemon}
+        keyExtractor={(item) => item.id.toString()}
+        numColumns={width > 600 ? 3 : 2}
+        contentContainerStyle={styles.listContainer}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.1}
+        ListFooterComponent={renderFooter}
+        showsVerticalScrollIndicator={false}
+        columnWrapperStyle={styles.columnWrapper}
+        style={styles.flatList}
+      />
     </View>
   );
 }
@@ -52,73 +170,81 @@ export default function ScreenHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#F7F9FB',
+    backgroundColor: '#F8FAFC',
+  },
+  header: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 20,
+    paddingBottom: 16,
+    elevation: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 8,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    marginBottom: 24,
-    textAlign: 'center',
-    color: '#1B263B',
+    fontSize: width > 600 ? 36 : 28,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginRight: 12,
   },
   headerDecoration: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-    backgroundColor: '#D3EFFF',
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    opacity: 0.3,
+    height: 3,
+    backgroundColor: '#6366F1',
+    marginHorizontal: 40,
+    borderRadius: 2,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 12,
-  },
-  card: {
-    flex: 1,
-    marginHorizontal: 8,
-    borderRadius: 20,
+  filtersContainer: {
     backgroundColor: '#FFFFFF',
-    elevation: 4,
-    paddingVertical: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
-  cardContent: {
-    alignItems: 'center',
-    // paddingHorizontal: 10, // eliminado para que el botón use 100%
+  typeScroll: {
+    flexGrow: 0,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 10,
-    color: '#1B263B',
-  },
-  cardDescription: {
-    fontSize: 13,
-    color: '#5C677D',
-    marginBottom: 14,
-    textAlign: 'center',
-  },
-  button: {
-    borderRadius: 12,
-    paddingVertical: 4,
+  typeScrollContent: {
     paddingHorizontal: 16,
-    width: '100%',
-    elevation: 0,
+    alignItems: 'center',
   },
-  buttonLabel: {
-    fontSize: 14,
+  typeChip: {
+    marginHorizontal: 4,
+    backgroundColor: '#F1F5F9',
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  typeChipSelected: {
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
+  },
+  typeChipText: {
     fontWeight: '600',
+    color: '#475569',
+    fontSize: 12,
+  },
+  typeChipTextSelected: {
     color: '#FFFFFF',
   },
-  buttonLuces: {
-    backgroundColor: '#FFD166',
+  flatList: {
+    flex: 1,
   },
-  buttonPuertas: {
-    backgroundColor: '#118AB2',
+  listContainer: {
+    paddingBottom: 24,
+    paddingHorizontal: 8,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+  },
+  loadingFooter: {
+    paddingVertical: 24,
+    alignItems: 'center',
   },
 });

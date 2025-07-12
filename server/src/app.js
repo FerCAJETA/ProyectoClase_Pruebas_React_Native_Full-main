@@ -3,8 +3,6 @@ const cors = require('cors');
 const config = require('./config');
 const clientes = require('./molulos/clientes/rutas');
 const usuario = require('./molulos/users/rutas');
-const puertas = require('./molulos/puertas/rutas');
-const luces = require('./molulos/luces/rutas');
 
 const app = express();
 app.use(express.json());
@@ -15,7 +13,13 @@ app.set('port', config.app.port);
 // Rutas
 app.use('/api/clientes', clientes);
 app.use('/api/usuario', usuario);
-app.use('/api/puertas', puertas);
-app.use('/api/luces', luces);
+
+// Ruta de prueba para verificar que el servidor funciona
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    message: 'Pokémon Server funcionando correctamente',
+    timestamp: new Date().toISOString()
+  });
+});
 
 module.exports = app;
